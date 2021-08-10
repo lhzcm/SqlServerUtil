@@ -4,7 +4,7 @@
 -- Date Generated: 2021年06月22日
 -- Description: 切分字符串
 ----------------------------------------------------------
-ALTER function [dbo].[p_if_string_split](
+create function [dbo].[p_if_string_split](
 @input varchar(max) = '',
 @separator varchar(128) = ''
 )
