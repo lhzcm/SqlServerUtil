@@ -12,7 +12,7 @@ as
 begin
 declare @tbcolumn table(
     rid int identity, 
-	object_id int,
+	default_object_id int,
 	column_name varchar(256), 
 	max_length int, 
 	precision int, 
@@ -40,7 +40,8 @@ declare @column_name varchar(256),
 @collation_name varchar(128),
 @is_identity bit,
 @identity varchar(64) = '',
-@tb_object_id int
+@tb_object_id int,
+@default_object_id int
 
 declare @tb table(rid int identity, text varchar(max))
 declare @columntext varchar(1024) = ''
@@ -50,10 +51,10 @@ select @tb_object_id = object_id from sys.tables where name = @tablename
 if @@rowcount <= 0
     return
 --获取每一列的信息
-insert into @tbcolumn(object_id, column_name, max_length, precision, scale,
+insert into @tbcolumn(default_object_id, column_name, max_length, precision, scale,
 is_nullable, system_type_id, system_type_presc, system_type_scale, system_max_length,
 type_name, collation_name, is_identity)
-select c.object_id, c.name, c.max_length, c.precision, c.scale,
+select c.default_object_id, c.name, c.max_length, c.precision, c.scale,
 c.is_nullable, c.system_type_id, ty.precision, ty.scale, ty.max_length, 
 ty.name, c.collation_name, c.is_identity from sys.tables t 
 join sys.columns c on t.object_id = c.object_id 
@@ -68,7 +69,7 @@ begin
 	select @column_name = column_name, @max_length = max_length, @precision = precision, @scale = scale, 
 	@is_nullable = is_nullable, @system_type_id = system_type_id, @system_type_presc = system_type_presc,
 	@system_type_scale = system_type_scale, @system_max_length = system_max_length, @type_name = type_name, 
-	@collation_name = collation_name, @is_identity = is_identity  from @tbcolumn where rid = @i
+	@collation_name = collation_name, @is_identity = is_identity, @default_object_id = default_object_id from @tbcolumn where rid = @i
 	if @@ROWCOUNT <= 0
 	    break
 	--添加列名和类型
@@ -93,6 +94,11 @@ begin
 	    declare @seed_value sql_variant = 0, @increment_value sql_variant = 0
 		select @seed_value = seed_value, @increment_value = increment_value from sys.identity_columns where object_id = @tb_object_id
 	    set @columntext += ' identity(' + convert(varchar, @seed_value) + ', ' + convert(varchar, @increment_value) + ')'
+	end
+	--添加默认值
+	if @default_object_id > 0
+	begin
+	    set @columntext += ' default' + (select definition from sys.default_constraints where object_id = @default_object_id)
 	end
 	if exists(select 1 from @tbcolumn where rid = @i + 1) or exists(select 1 from sys.indexes where object_id = @tb_object_id and is_primary_key = 1)
 	    set @columntext += ','
