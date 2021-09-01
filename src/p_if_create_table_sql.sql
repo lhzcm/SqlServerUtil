@@ -4,7 +4,7 @@
 -- Date Generated: 2021年08月10日
 -- Description: 获取创建table的sql
 ----------------------------------------------------------
-create function p_if_create_table_sql(
+ALTER function [dbo].[p_if_create_table_sql](
 @tablename varchar(128)
 )
 returns @show table(text varchar(max))
@@ -105,11 +105,11 @@ begin
 	insert into @tb(text) values(@columntext)
 end
 --添加主键
-declare @PK_name varchar(1024), @index_id int
-select @PK_name = name, @index_id = index_id from sys.indexes where object_id = @tb_object_id and is_primary_key = 1
+declare @PK_name varchar(1024), @index_id int, @type_desc varchar(128)
+select @PK_name = name, @index_id = index_id, @type_desc = type_desc from sys.indexes where object_id = @tb_object_id and is_primary_key = 1
 if @@rowcount > 0
 begin
-    set @columntext = '    constraint ' + @PK_name + ' primary key('
+    set @columntext = '    constraint ' + @PK_name + ' primary key '+ @type_desc +'('
 	declare @keys varchar(1024) = isnull(rtrim((select col_name(object_id, column_id) + ', ' 
 	    from sys.index_columns where object_id = @tb_object_id and index_id = @index_id for xml path(''))), ' ')
     set @columntext += substring(@keys, 1, len(@keys)-1) + ')'
