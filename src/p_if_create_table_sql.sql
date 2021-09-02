@@ -3,6 +3,7 @@
 -- Author: Lkl
 -- Date Generated: 2021年08月10日
 -- Description: 获取创建table的sql
+-- Depends: dbo.p_if_string_split
 ----------------------------------------------------------
 create function [dbo].[p_if_create_table_sql](
 @tablename varchar(128)
@@ -43,12 +44,12 @@ declare @column_name varchar(256),
 @tb_object_id int,
 @default_object_id int
 
-declare @tb table(rid int identity, text varchar(max))
-declare @columntext varchar(1024) = ''
+declare @tb table(rid int identity, obj_name varchar(128), type int, text nvarchar(max), sort int not null default 0)
+declare @columntext nvarchar(max) = ''
 
 --获取表的object_id
-select @tb_object_id = object_id from sys.tables where name = @tablename
-if @@rowcount <= 0
+set @tb_object_id = OBJECT_ID(@tablename)
+if @tb_object_id is null
     return
 --获取每一列的信息
 insert into @tbcolumn(default_object_id, column_name, max_length, precision, scale,
@@ -102,7 +103,7 @@ begin
 	end
 	if exists(select 1 from @tbcolumn where rid = @i + 1) or exists(select 1 from sys.indexes where object_id = @tb_object_id and is_primary_key = 1)
 	    set @columntext += ','
-	insert into @tb(text) values(@columntext)
+	insert into @tb(type, obj_name, text) values(1, @column_name, @columntext)
 end
 --添加主键
 declare @key_name varchar(1024), @index_id int, @type_desc varchar(128), @keys varchar(1024) = ''
@@ -113,27 +114,86 @@ begin
 	set @keys  = isnull(rtrim((select col_name(object_id, column_id) + ', ' 
 	    from sys.index_columns where object_id = @tb_object_id and index_id = @index_id order by key_ordinal for xml path(''))), ' ')
     set @columntext += substring(@keys, 1, len(@keys)-1) + ')'
-	insert into @tb(text) values(@columntext)
+	insert into @tb(type, obj_name, text) values(2, @key_name, @columntext)
 end
 insert into @tb(text) select ')'
 --添加索引
 declare @indextb table(rid int identity, index_id int, keyname varchar(256), type_desc varchar(128))
 insert into @indextb(index_id, keyname, type_desc) 
 select index_id, name, type_desc from sys.indexes where object_id = @tb_object_id and is_primary_key = 0 
-set @i = 0
-while 1 = 1
+if @@ROWCOUNT > 0
 begin
-    set @i += 1
-	select @key_name = keyname, @index_id = index_id, @type_desc = type_desc from @indextb where rid = @i
-	if @@rowcount <= 0 break
-	insert into @tb(text) select 'go'
+    insert into @tb(text) select 'go'
+    insert into @tb(text) select '--表索引'
+    set @i = 0
+    while 1 = 1
+    begin
+        set @i += 1
+	    select @key_name = keyname, @index_id = index_id, @type_desc = type_desc from @indextb where rid = @i
+	    if @@rowcount <= 0 break
+	    insert into @tb(text) select 'go'
 
-    set @columntext = 'create ' + @type_desc + ' index ' + @key_name + ' on ' + @tablename+'('
-	set @keys  = isnull(rtrim((select col_name(object_id, column_id) + ', ' 
-	    from sys.index_columns where object_id = @tb_object_id and index_id = @index_id order by key_ordinal for xml path(''))), ' ')
-    set @columntext += substring(@keys, 1, len(@keys)-1) + ')'
-	insert into @tb(text) values(@columntext)
+        set @columntext = 'create ' + @type_desc + ' index ' + @key_name + ' on ' + @tablename+'('
+	    set @keys  = isnull(rtrim((select col_name(object_id, column_id) + ', ' 
+	        from sys.index_columns where object_id = @tb_object_id and index_id = @index_id order by key_ordinal for xml path(''))), ' ')
+        set @columntext += substring(@keys, 1, len(@keys)-1) + ')'
+	    insert into @tb(type, obj_name, text) values(3, @key_name, @columntext)
+    end
 end
-insert @show(text) select text from @tb order by rid asc
+--添加表字段描述注释
+declare @table_descriptions table(rid int identity, description nvarchar(max))
+declare @table_description nvarchar(max) = ''
+select @table_description = cast(value as nvarchar(max)) from sys.extended_properties where major_id = @tb_object_id and minor_id = 0
+if @@ROWCOUNT > 0
+begin
+    insert into @tb(text) select 'go'
+    insert into @tb(text) select '--表描述'
+	insert into @tb(text) select 'go'
+	insert into @table_descriptions(description) select result from p_if_string_split(@table_description, char(13)+char(10))
+	--生成sql
+	set @i = 1
+	select @table_description = description from @table_descriptions where rid = @i 
+	insert into @tb(type, obj_name, text) select 4, @tablename + '_description', N'execute sp_addextendedproperty N''MS_Description'', N''' + @table_description 
+	while 1 = 1
+	begin
+	    set @i += 1
+	    select @table_description = description from @table_descriptions where rid = @i 
+		if @@ROWCOUNT <= 0 break
+	    insert into @tb(type, obj_name, text) select 4, @tablename + '_description', @table_description 
+	end
+	update @tb set text += ''', N''SCHEMA'', N''dbo'', N''TABLE'', N'''+@tablename+'''' where rid = (select top 1 rid from @tb order by rid desc)
+	--添加注释
+	update @table_descriptions set description = '--' + description where charindex('--', replace(replace(description, char(32), ''), char(9), ''), 1) != 1
+	insert into @tb(sort, text) select 1, description from @table_descriptions order by rid asc
+end
+--添加表字段描述注释
+declare @tb_description table(rid int identity, name varchar(128), value nvarchar(max))
+declare @column_descritpion nvarchar(max) = ''
+declare @maxcolumnlen int = isnull((select max(len(text)) from @tb where type = 1), 0) + 4
+insert into @tb_description(name, value)
+select c.name, convert(nvarchar, p.value) from sys.columns c join sys.extended_properties p 
+on c.object_id = p.major_id and c.column_id = p.minor_id where c.object_id = @tb_object_id
+if @@ROWCOUNT > 0
+begin
+    insert into @tb(text) select 'go'
+    insert into @tb(text) select '--表字段描述'
+    set @i = 0
+    while 1 = 1
+    begin
+        set @i += 1
+	    select @column_name = name, @column_descritpion = value from @tb_description where rid = @i
+	    if @@ROWCOUNT <= 0 break
+	    --添加注释
+	    update @tb set text += (select char(32) from master..spt_values 
+	        where type = 'P' and number < @maxcolumnlen - len(text) 
+		    for xml path(''), type).value('.', 'nvarchar(max)')
+	    + N'--' + @column_descritpion where obj_name = @column_name
+	    --生成sql
+	    insert into @tb(text) select 'go'
+	    insert into @tb(type, obj_name, text) select 5, @column_name + '_description', N'execute sp_addextendedproperty N''MS_Description'', N''' + @column_descritpion 
+	    + ''', N''SCHEMA'', N''dbo'', N''TABLE'', N'''+@tablename+''', N''COLUMN'', N'''+@column_name+''''
+    end
+end
+insert @show(text) select text from @tb order by sort desc, rid asc
 return
 end
