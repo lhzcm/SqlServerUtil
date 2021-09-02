@@ -143,7 +143,7 @@ end
 --添加表字段描述注释
 declare @table_descriptions table(rid int identity, description nvarchar(max))
 declare @table_description nvarchar(max) = ''
-select @table_description = cast(value as nvarchar(max)) from sys.extended_properties where major_id = @tb_object_id and minor_id = 0
+select @table_description = cast(value as nvarchar(max)) from sys.extended_properties where major_id = @tb_object_id and minor_id = 0 and name = N'MS_Description'
 if @@ROWCOUNT > 0
 begin
     insert into @tb(text) select 'go'
@@ -172,7 +172,7 @@ declare @column_descritpion nvarchar(max) = ''
 declare @maxcolumnlen int = isnull((select max(len(text)) from @tb where type = 1), 0) + 4
 insert into @tb_description(name, value)
 select c.name, convert(nvarchar, p.value) from sys.columns c join sys.extended_properties p 
-on c.object_id = p.major_id and c.column_id = p.minor_id where c.object_id = @tb_object_id
+on c.object_id = p.major_id and c.column_id = p.minor_id where c.object_id = @tb_object_id and p.name = N'MS_Description'
 if @@ROWCOUNT > 0
 begin
     insert into @tb(text) select 'go'
