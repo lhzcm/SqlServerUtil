@@ -1,5 +1,5 @@
 ----------------------------------------------------------
--- Procedure Name: cc p_if_create_table_sql, 0 ,1
+-- Function Name: cc p_if_create_table_sql, 0 ,1
 -- Author: Lkl
 -- Date Generated: 2021年08月10日
 -- Description: 获取创建table的sql
@@ -197,3 +197,23 @@ end
 insert @show(text) select text from @tb order by sort desc, rid asc
 return
 end
+
+GO
+
+----------------------------------------------------------
+-- Procedure Name: cc sp_create_table_sql,0,1
+-- Author: Lkl
+-- Date Generated: 2020年07月21日
+-- Description:  删除礼包
+----------------------------------------------------------
+
+create procedure [dbo].[sp_create_table_sql]
+@tablename varchar(128)
+as
+set nocount on
+set transaction isolation level read uncommitted
+set xact_abort on
+
+select * from dbo.p_if_create_table_sql(@tablename)
+
+GO
