@@ -204,7 +204,7 @@ GO
 -- Procedure Name: cc sp_create_table_sql,0,1
 -- Author: Lkl
 -- Date Generated: 2020年07月21日
--- Description:  删除礼包
+-- Description:  生成表结构sql
 ----------------------------------------------------------
 
 create procedure [dbo].[sp_create_table_sql]
