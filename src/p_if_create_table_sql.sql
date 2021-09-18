@@ -171,7 +171,7 @@ declare @tb_description table(rid int identity, name varchar(128), value nvarcha
 declare @column_descritpion nvarchar(max) = ''
 declare @maxcolumnlen int = isnull((select max(len(text)) from @tb where type = 1), 0) + 4
 insert into @tb_description(name, value)
-select c.name, convert(nvarchar, p.value) from sys.columns c join sys.extended_properties p 
+select c.name, convert(nvarchar(max), p.value) from sys.columns c join sys.extended_properties p 
 on c.object_id = p.major_id and c.column_id = p.minor_id where c.object_id = @tb_object_id and p.name = N'MS_Description'
 if @@ROWCOUNT > 0
 begin
