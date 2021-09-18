@@ -120,7 +120,7 @@ insert into @tb(text) select ')'
 --添加索引
 declare @indextb table(rid int identity, index_id int, keyname varchar(256), type_desc varchar(128))
 insert into @indextb(index_id, keyname, type_desc) 
-select index_id, name, type_desc from sys.indexes where object_id = @tb_object_id and is_primary_key = 0 
+select index_id, name, type_desc from sys.indexes where object_id = @tb_object_id and is_primary_key = 0 and type != 0 
 if @@ROWCOUNT > 0
 begin
     insert into @tb(text) select 'go'
