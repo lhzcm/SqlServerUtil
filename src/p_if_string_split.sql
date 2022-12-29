@@ -11,9 +11,11 @@ create function [dbo].[p_if_string_split](
 returns @tb table(rid int identity, result varchar(max))
 as
 begin
-	--len函数会忽略文字后面空格，需要特殊处理一下
-	declare @len int = len(@separator) + (datalength(@separator) - datalength(rtrim(@separator)))    
-
+	--匹配字符长度，len函数会忽略文字后面空格，需要特殊处理一下
+	declare @len int = len(@separator) + (datalength(@separator) - datalength(rtrim(@separator)))
+        --输入字符尾部空格长度
+        declare @input_rtrim_len int = datalength(@input) - datalength(rtrim(@input))
+	
 	declare @index int = 1
 	declare @tempindex int = 1
 
@@ -23,7 +25,7 @@ begin
 		if @tempindex = 0
 		begin
 		    if @index != 1
-			    insert into @tb(result) select SUBSTRING(@input, @index, len(@input) - @index + 1) 
+			    insert into @tb(result) select SUBSTRING(@input, @index, len(@input) - @index + 1 + @input_rtrim_len) 
 			else
 			    insert into @tb(result) select @input
 			break
