@@ -11,10 +11,12 @@ create function [dbo].[p_if_string_split](
 returns @tb table(rid int identity, result varchar(max))
 as
 begin
+	if @input is null or @separator is NULL
+		return
 	--匹配字符长度，len函数会忽略文字后面空格，需要特殊处理一下
 	declare @len int = len(@separator) + (datalength(@separator) - datalength(rtrim(@separator)))
-        --输入字符尾部空格长度
-        declare @input_rtrim_len int = datalength(@input) - datalength(rtrim(@input))
+    --输入字符尾部空格长度
+    declare @input_rtrim_len int = datalength(@input) - datalength(rtrim(@input))
 	
 	declare @index int = 1
 	declare @tempindex int = 1

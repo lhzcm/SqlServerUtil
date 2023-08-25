@@ -1,26 +1,26 @@
-----------------------------------------------------------    
--- Function Name: cc f_value_to_jsonstr, 0 ,1    
--- Author: Lkl    
--- Date Generated: 2022年12月14日    
--- Description: 把对应类型转化成json字符串    
-----------------------------------------------------------    
-create function [dbo].[f_value_to_jsonstr](@value sql_variant)
-returns varchar(max)
-as
-begin
-    if @value is null return 'null'
-    return case SQL_VARIANT_PROPERTY(@value, 'BaseType')
-        when 'bit' then case when cast(@value as bit) = 1 then 'true' else 'false' end 
-        when 'int' then convert(varchar, @value)
-        when 'bigint' then convert(varchar, @value)
-        when 'smallint' then convert(varchar, @value)
-        when 'decimal' then convert(varchar, @value)
-        when 'float' then convert(varchar, @value)
-        when 'datetime' then '"'+convert(varchar, @value, 121)+'"'
-        when 'date' then '"'+convert(varchar, @value, 120)+'"'
-        else '"'+convert(varchar, @value)+'"'
-    end
-end  
+----------------------------------------------------------      
+-- Function Name: cc f_value_to_jsonstr, 0 ,1      
+-- Author: Lkl      
+-- Date Generated: 2022年12月14日      
+-- Description: 把对应类型转化成json字符串      
+----------------------------------------------------------      
+create function [dbo].[f_value_to_jsonstr](@value sql_variant)  
+returns varchar(max)  
+as  
+begin  
+    if @value is null return 'null'  
+    return case SQL_VARIANT_PROPERTY(@value, 'BaseType')  
+        when 'bit' then case when cast(@value as bit) = 1 then 'true' else 'false' end   
+        when 'int' then convert(varchar, @value)  
+        when 'bigint' then convert(varchar, @value)  
+        when 'smallint' then convert(varchar, @value)  
+        when 'decimal' then convert(varchar, @value)  
+        when 'float' then convert(varchar, @value)  
+        when 'datetime' then '"'+convert(varchar, @value, 121)+'"'  
+        when 'date' then '"'+convert(varchar, @value, 120)+'"'  
+        else '"'+convert(varchar(max), @value)+'"'  
+    end  
+end 
 go
 ----------------------------------------------------------    
 -- Function Name: cc sp_tojson, 0 ,1    
