@@ -136,10 +136,16 @@ begin
         --判断是否是uniuqe Key
         if exists(select 1 from sys.objects where parent_object_id = @tb_object_id and name = @key_name and type = 'UQ')
             set @type_desc = 'UNIQUE'
-        set @columntext = 'create ' + @type_desc + ' index ' + @key_name + ' on ' + @tablename+'('  
         set @keys  = isnull(rtrim((select col_name(object_id, column_id) + ', '   
-            from sys.index_columns where object_id = @tb_object_id and index_id = @index_id order by key_ordinal for xml path(''))), ' ')  
-        set @columntext += substring(@keys, 1, len(@keys)-1) + ')'  
+            from sys.index_columns where object_id = @tb_object_id and index_id = @index_id and is_included_column = 0 order by key_ordinal for xml path(''))), ' ')  
+        set @columntext = 'create ' + @type_desc + ' index ' + @key_name + ' on ' + @tablename+'(' + substring(@keys, 1, len(@keys)-1) + ')'  
+        --添加include列
+        if exists(select 1 from sys.index_columns where object_id = @tb_object_id and index_id = @index_id and is_included_column = 1)
+        begin
+            set @keys = isnull(rtrim((select col_name(object_id, column_id) + ', '   
+            from sys.index_columns where object_id = @tb_object_id and index_id = @index_id and is_included_column = 1 for xml path(''))), ' ')  
+            set @columntext += ' include(' + substring(@keys, 1, len(@keys)-1) + ')' 
+        end
         insert into @tb(type, obj_name, text) values(3, @key_name, @columntext)  
     end  
 end  
